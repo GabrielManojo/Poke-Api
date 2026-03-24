@@ -12,6 +12,7 @@ function PokemonDetail({
   return (
     <main className="app-shell py-5">
       <div className="container detail-view">
+        {/* Shared toolbar: go back to grid or move to neighboring Pokemon. */}
         <div className="detail-toolbar mb-4">
           <button className="btn btn-outline-secondary" onClick={onBack}>
             Back to grid
@@ -113,6 +114,7 @@ function PokemonDetail({
               <p className="detail-label mb-3">Stats</p>
               <div className="stat-list">
                 {selectedPokemon.stats.map((stat) => (
+                  // Stats are normalized against 200 so bars remain visually comparable.
                   <div key={stat.stat.name} className="stat-row">
                     <span className="stat-name">
                       {formatName(stat.stat.name)}

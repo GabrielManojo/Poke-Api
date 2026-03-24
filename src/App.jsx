@@ -6,6 +6,7 @@ import PokemonDetail from "./components/PokemonDetail";
 import PokemonGrid from "./components/PokemonGrid";
 
 function App() {
+  // Maximum number of Pokemon allowed in the team builder.
   const teamLimit = 6;
 
   // Stores all Pokemon returned from the API.
@@ -81,6 +82,7 @@ function App() {
     [pokemons],
   );
 
+  // Locate the selected Pokemon in the sorted list so we can navigate prev/next.
   const selectedPokemonIndex = useMemo(() => {
     if (!selectedPokemon) {
       return -1;
@@ -91,6 +93,7 @@ function App() {
     );
   }, [selectedPokemon, sortedPokemons]);
 
+  // Adjacent Pokemon used by the detail screen navigation buttons.
   const previousPokemon =
     selectedPokemonIndex > 0 ? sortedPokemons[selectedPokemonIndex - 1] : null;
 
@@ -100,6 +103,7 @@ function App() {
       ? sortedPokemons[selectedPokemonIndex + 1]
       : null;
 
+  // Recalculate team weakness summary whenever team composition changes.
   useEffect(() => {
     async function buildTeamWeaknesses() {
       if (!teamPokemons.length) {
@@ -108,6 +112,7 @@ function App() {
       }
 
       try {
+        // Keep one API request per unique type in the selected team.
         const uniqueTypeEntries = [
           ...new Map(
             teamPokemons
@@ -132,6 +137,7 @@ function App() {
           }),
         );
 
+        // Build fast lookup tables and aggregate how many team members share each weakness.
         const weaknessByType = new Map(typeWeaknessEntries);
         const weaknessCounter = teamPokemons.reduce((counter, pokemon) => {
           const pokemonWeaknesses = new Set(
@@ -153,6 +159,7 @@ function App() {
 
         setTeamWeaknesses(weaknessesList);
       } catch {
+        // Fallback to an empty summary if one of the type requests fails.
         setTeamWeaknesses([]);
       }
     }
@@ -282,6 +289,7 @@ function App() {
     setErrorMessage("");
   };
 
+  // Detail navigation handlers reuse the same detail loading pipeline.
   const openPreviousPokemon = () => {
     if (previousPokemon) {
       openPokemonDetail(previousPokemon);
@@ -294,6 +302,7 @@ function App() {
     }
   };
 
+  // Adds a Pokemon once, while respecting the six-slot team limit.
   const addPokemonToTeam = (pokemon) => {
     setTeamPokemons((prevTeam) => {
       if (prevTeam.length >= teamLimit) {
@@ -308,6 +317,7 @@ function App() {
     });
   };
 
+  // Removes a single Pokemon from the team sidebar.
   const removePokemonFromTeam = (pokemonId) => {
     setTeamPokemons((prevTeam) =>
       prevTeam.filter((pokemon) => pokemon.id !== pokemonId),

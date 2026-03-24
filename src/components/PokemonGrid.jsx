@@ -10,6 +10,7 @@ function PokemonGrid({
   formatName,
   formatNumber,
 }) {
+  // Set-based checks make "already added" lookups O(1) during rendering.
   const teamIds = new Set(teamPokemons.map((pokemon) => pokemon.id));
   const isTeamFull = teamPokemons.length >= teamLimit;
   const pokeBallImage =
@@ -19,6 +20,7 @@ function PokemonGrid({
     <main className="app-shell py-5">
       <div className="container">
         <div className="row g-4 align-items-start">
+          {/* Main content area: Pokemon catalog cards. */}
           <section className="col-12 col-xl-9">
             <div className="row justify-content-center mb-5">
               <div className="col-12 text-center">
@@ -72,7 +74,9 @@ function PokemonGrid({
                           <p className="small text-secondary mb-1 pokemon-number">
                             {formatNumber(pokemon.id)}
                           </p>
-                          <h2 className="h4 mb-2">{formatName(pokemon.name)}</h2>
+                          <h2 className="h4 mb-2">
+                            {formatName(pokemon.name)}
+                          </h2>
                           <div className="type-row mt-auto mb-3">
                             {pokemon.types.map((type) => (
                               <span
@@ -101,6 +105,7 @@ function PokemonGrid({
             )}
           </section>
 
+          {/* Right sidebar: six team slots + aggregated weakness summary. */}
           <aside className="col-12 col-xl-3">
             <section className="card border-0 shadow-sm team-sidebar sticky-xl-top">
               <div className="card-body p-3 p-lg-4">
@@ -111,6 +116,7 @@ function PokemonGrid({
 
                 <div className="team-slots mb-4">
                   {Array.from({ length: teamLimit }).map((_, index) => {
+                    // Team is displayed by slot index so empty positions still render as Pokeballs.
                     const teamPokemon = teamPokemons[index];
 
                     return (
@@ -125,7 +131,11 @@ function PokemonGrid({
                               ? teamPokemon.sprites.front_default
                               : pokeBallImage
                           }
-                          alt={teamPokemon ? teamPokemon.name : "Empty Pokeball slot"}
+                          alt={
+                            teamPokemon
+                              ? teamPokemon.name
+                              : "Empty Pokeball slot"
+                          }
                           className="team-slot-image"
                         />
                         <div className="team-slot-copy">

@@ -10,6 +10,7 @@ function DetailLoading({
   return (
     <main className="app-shell py-5">
       <div className="container detail-view">
+        {/* Keep the same controls visible while detail data is loading. */}
         <div className="detail-toolbar mb-4">
           <button className="btn btn-outline-secondary" onClick={onBack}>
             Back to grid
