@@ -1,28 +1,38 @@
+// Import the separate TeamSidebar component so this file only handles the grid.
+import TeamSidebar from "./TeamSidebar";
+
+// PokemonGrid is the main catalog screen.
+// It receives all data and callback functions from App.jsx via props.
 function PokemonGrid({
-  isGridLoading,
-  sortedPokemons,
-  onSelectPokemon,
-  onAddToTeam,
-  onRemoveFromTeam,
-  teamPokemons,
-  teamPokemonWeaknesses,
-  teamWeaknesses,
-  teamLimit,
-  formatName,
-  formatNumber,
+  isGridLoading, // true while the initial 1025-Pokemon fetch is in progress.
+  sortedPokemons, // Full Pokemon array sorted by Pokédex ID.
+  onSelectPokemon, // Opens the detail view for a single Pokemon.
+  onAddToTeam, // Adds a Pokemon to the team sidebar.
+  onRemoveFromTeam, // Removes a Pokemon from the team sidebar.
+  teamPokemons, // Array of Pokemon objects the user has added.
+  teamPokemonWeaknesses, // Per-member weakness data computed in App.jsx.
+  teamWeaknesses, // Aggregated team-wide weakness counts.
+  teamLimit, // Maximum allowed team size (6).
+  formatName, // Converts "mr-mime" → "Mr Mime".
+  formatNumber, // Converts 1 → "#0001".
 }) {
-  // Set-based checks make "already added" lookups O(1) during rendering.
+  // Build a Set of IDs so checking "is this Pokemon already in the team?"
+  // is an O(1) operation instead of looping the array every render.
   const teamIds = new Set(teamPokemons.map((pokemon) => pokemon.id));
+
+  // Used to disable every "Add to my team" button once 6 members are chosen.
   const isTeamFull = teamPokemons.length >= teamLimit;
-  const pokeBallImage =
-    "https://www.clipartmax.com/png/small/129-1298390_pokeball-transparent-png-pokeball-png-pokemon-go.png";
 
   return (
+    // app-shell applies the full-height gradient background.
     <main className="app-shell py-5">
+      {/* container centres the layout and adds horizontal padding. */}
       <div className="container">
+        {/* Bootstrap row: left 9/12 grid, right 3/12 sticky sidebar. */}
         <div className="row g-4 align-items-start">
-          {/* Main content area: Pokemon catalog cards. */}
+          {/* ── LEFT: Pokemon catalog grid ───────────────────────────── */}
           <section className="col-12 col-xl-9">
+            {/* Page header centred above the card grid. */}
             <div className="row justify-content-center mb-5">
               <div className="col-12 text-center">
                 <p className="text-uppercase fw-semibold text-secondary mb-2 app-eyebrow">
@@ -35,9 +45,14 @@ function PokemonGrid({
               </div>
             </div>
 
+            {/*
+              Show a loading alert while the API calls are in flight,
+              then switch to the card grid once data is ready.
+            */}
             {isGridLoading ? (
               <div className="row justify-content-center">
                 <div className="col-12 col-md-8 col-lg-6">
+                  {/* role="status" announces the message to screen readers. */}
                   <div
                     className="alert alert-light border text-center shadow-sm mb-0"
                     role="status"
@@ -47,48 +62,66 @@ function PokemonGrid({
                 </div>
               </div>
             ) : (
+              // Responsive grid: 1 col on xs, 2 on sm, 3 on lg, 4 on xxl.
               <div className="row g-4">
                 {sortedPokemons.map((pokemon) => {
+                  // Check the Set so the button reacts instantly without re-fetching.
                   const isInTeam = teamIds.has(pokemon.id);
 
                   return (
+                    // Each Pokemon gets its own Bootstrap column.
                     <div
-                      key={pokemon.name}
+                      key={pokemon.name} // Unique key lets React track list items efficiently.
                       className="col-12 col-sm-6 col-lg-4 col-xxl-3"
                     >
+                      {/* pokemon-card adds hover lift animation via CSS. */}
                       <article className="card h-100 shadow-sm border-0 pokemon-card">
+                        {/* d-flex flex-column makes the card body stretch to equal height. */}
                         <div className="card-body d-flex flex-column p-3">
+                          {/* Clicking the image opens the full detail view. */}
                           <div className="pokemon-image-wrap mb-3">
                             <button
                               type="button"
-                              className="pokemon-image-button"
-                              onClick={() => onSelectPokemon(pokemon)}
+                              className="pokemon-image-button" // Resets browser button styles.
+                              onClick={() => onSelectPokemon(pokemon)} // Triggers detail load in App.
                             >
                               <img
-                                src={pokemon.sprites.front_default}
-                                alt={pokemon.name}
+                                src={pokemon.sprites.front_default} // Front sprite from PokeAPI.
+                                alt={pokemon.name} // Accessible alt text.
                                 className="img-fluid"
                               />
                             </button>
                           </div>
 
+                          {/* Pokédex number formatted as "#0001". */}
                           <p className="small text-secondary mb-1 pokemon-number">
                             {formatNumber(pokemon.id)}
                           </p>
+
+                          {/* Pokemon name formatted for readability. */}
                           <h2 className="h4 mb-2">
                             {formatName(pokemon.name)}
                           </h2>
+
+                          {/* mt-auto pushes type chips to the bottom of equal-height cards. */}
                           <div className="type-row mt-auto mb-3">
+                            {/* Render one colour-coded chip per type (e.g. Fire, Water). */}
                             {pokemon.types.map((type) => (
                               <span
-                                key={type.type.name}
-                                className={`type-chip type-${type.type.name}`}
+                                key={type.type.name} // Unique key per type.
+                                className={`type-chip type-${type.type.name}`} // CSS colours the chip.
                               >
                                 {formatName(type.type.name)}
                               </span>
                             ))}
                           </div>
 
+                          {/*
+                            Add to my team button.
+                            Disabled when the Pokemon is already on the team (isInTeam)
+                            or when all 6 slots are filled (isTeamFull).
+                            The label switches to "Added" once the Pokemon is on the team.
+                          */}
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-success"
@@ -106,123 +139,21 @@ function PokemonGrid({
             )}
           </section>
 
-          {/* Right sidebar split into two cards to keep long content manageable. */}
+          {/* ── RIGHT: Sticky team sidebar ───────────────────────────────── */}
+          {/*
+            The aside lives outside the main grid section so it can be
+            positioned sticky independently. All sidebar logic lives in
+            TeamSidebar.jsx — we just forward the props it needs.
+          */}
           <aside className="col-12 col-xl-3">
-            <div className="sidebar-stack">
-              <section className="card border-0 shadow-sm sidebar-card">
-                <div className="card-body p-3 p-lg-4">
-                  <h2 className="h4 mb-1">Your Team</h2>
-                  <p className="text-secondary small mb-3">
-                    {teamPokemons.length}/{teamLimit} slots filled
-                  </p>
-
-                  <div className="team-slots mb-0">
-                    {Array.from({ length: teamLimit }).map((_, index) => {
-                      // Team is displayed by slot index so empty positions still render as Pokeballs.
-                      const teamPokemon = teamPokemons[index];
-
-                      return (
-                        <article
-                          key={`team-slot-${index}`}
-                          className="team-slot"
-                          aria-label={`Team slot ${index + 1}`}
-                        >
-                          <img
-                            src={
-                              teamPokemon
-                                ? teamPokemon.sprites.front_default
-                                : pokeBallImage
-                            }
-                            alt={
-                              teamPokemon
-                                ? teamPokemon.name
-                                : "Empty Pokeball slot"
-                            }
-                            className="team-slot-image"
-                          />
-                          <div className="team-slot-copy">
-                            <p className="mb-0 small fw-semibold">
-                              {teamPokemon
-                                ? formatName(teamPokemon.name)
-                                : `Empty Slot ${index + 1}`}
-                            </p>
-                            {teamPokemon ? (
-                              <button
-                                type="button"
-                                className="btn btn-link btn-sm p-0 team-remove-btn"
-                                onClick={() => onRemoveFromTeam(teamPokemon.id)}
-                              >
-                                Remove
-                              </button>
-                            ) : null}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </div>
-              </section>
-
-              <section className="card border-0 shadow-sm sidebar-card">
-                <div className="card-body p-3 p-lg-4 sidebar-analysis-body">
-                  {/* Per-Pokemon view: makes it clear which weaknesses belong to each member. */}
-                  <p className="detail-label mb-2">Pokemon Weaknesses</p>
-                  {teamPokemonWeaknesses.length ? (
-                    <div className="team-weakness-breakdown mb-3">
-                      {teamPokemonWeaknesses.map((pokemon) => (
-                        <article
-                          key={pokemon.id}
-                          className="team-weakness-item"
-                        >
-                          <p className="small fw-semibold mb-2">
-                            {formatName(pokemon.name)}
-                          </p>
-                          {pokemon.weaknesses.length ? (
-                            <div className="type-row">
-                              {pokemon.weaknesses.map((name) => (
-                                <span
-                                  key={`${pokemon.id}-${name}`}
-                                  className={`weakness-chip type-${name}`}
-                                >
-                                  {formatName(name)}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="small text-secondary mb-0">
-                              No double-damage weaknesses.
-                            </p>
-                          )}
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="small text-secondary mb-3">
-                      Add Pokemon to see each member's weaknesses.
-                    </p>
-                  )}
-
-                  {/* Combined view: quick scan of overlap risk across the whole team. */}
-                  <p className="detail-label mb-2">Shared Weakness Summary</p>
-                  {teamWeaknesses.length ? (
-                    <div className="type-row">
-                      {teamWeaknesses.map((weakness) => (
-                        <span
-                          key={weakness.name}
-                          className={`weakness-chip type-${weakness.name}`}
-                        >
-                          {formatName(weakness.name)} x{weakness.count}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="small text-secondary mb-0">
-                      Team summary will appear here.
-                    </p>
-                  )}
-                </div>
-              </section>
-            </div>
+            <TeamSidebar
+              teamPokemons={teamPokemons} // Current team members.
+              teamPokemonWeaknesses={teamPokemonWeaknesses} // Per-member weakness data.
+              teamWeaknesses={teamWeaknesses} // Combined team weakness counts.
+              teamLimit={teamLimit} // Maximum 6 slots.
+              onRemoveFromTeam={onRemoveFromTeam} // Remove callback from App.
+              formatName={formatName} // Name formatter helper.
+            />
           </aside>
         </div>
       </div>
