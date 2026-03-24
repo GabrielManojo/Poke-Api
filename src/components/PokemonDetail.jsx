@@ -61,7 +61,10 @@ function PokemonDetail({
                   <p className="detail-label mb-2">Type</p>
                   <div className="type-row">
                     {selectedPokemon.types.map((type) => (
-                      <span key={type.type.name} className="type-chip">
+                      <span
+                        key={type.type.name}
+                        className={`type-chip type-${type.type.name}`}
+                      >
                         {formatName(type.type.name)}
                       </span>
                     ))}
@@ -74,7 +77,7 @@ function PokemonDetail({
                   </p>
                   <div className="type-row">
                     {detailData.weaknesses.map((name) => (
-                      <span key={name} className="weakness-chip">
+                      <span key={name} className={`weakness-chip type-${name}`}>
                         {formatName(name)}
                       </span>
                     ))}

@@ -60,7 +60,10 @@ function PokemonGrid({
                     <h2 className="h4 mb-2">{formatName(pokemon.name)}</h2>
                     <div className="type-row mt-auto">
                       {pokemon.types.map((type) => (
-                        <span key={type.type.name} className="type-chip">
+                        <span
+                          key={type.type.name}
+                          className={`type-chip type-${type.type.name}`}
+                        >
                           {formatName(type.type.name)}
                         </span>
                       ))}
