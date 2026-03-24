@@ -1,12 +1,19 @@
+/* =========================
+   Global Page Shell
+   ========================= */
 .app-shell {
   min-height: 100vh;
   background: linear-gradient(180deg, #f6f7f8 0%, #ecf3fa 100%);
 }
 
+/* Small uppercase eyebrow text used above main page titles. */
 .app-eyebrow {
   letter-spacing: 0.12rem;
 }
 
+/* =========================
+   Pokemon Card Grid
+   ========================= */
 .pokemon-card {
   border-radius: 1rem;
   transition:
@@ -44,6 +51,9 @@
   letter-spacing: 0.04rem;
 }
 
+/* =========================
+   Sidebar Cards (Team + Weaknesses)
+   ========================= */
 .team-sidebar {
   border-radius: 1rem;
   top: 1rem;
@@ -55,12 +65,41 @@
 }
 
 .sidebar-card {
+  /* Recent change: subtle card treatment to make sidebars look cleaner. */
   border-radius: 1rem;
+  border: 0.0625rem solid #dde3ea;
+  background: linear-gradient(180deg, #f9fbfd 0%, #f3f7fb 100%);
 }
 
 .sidebar-analysis-body {
-  max-height: 28rem;
-  overflow: auto;
+  /* Recent change: no internal scrollbar; content grows naturally with page. */
+  max-height: none;
+  overflow: visible;
+}
+
+.team-weakness-compact-list {
+  /* Recent change: compact list replaces larger per-Pokemon cards. */
+  display: grid;
+  gap: 0.5rem;
+}
+
+.team-weakness-compact-row {
+  border: 0.0625rem solid #dbe3ed;
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.55rem;
+  background: #ffffff;
+}
+
+.team-weakness-name {
+  color: #1f2937;
+}
+
+.team-weakness-values {
+  line-height: 1.35;
+}
+
+.shared-weakness-chip {
+  letter-spacing: 0.01rem;
 }
 
 .team-slots {
@@ -105,6 +144,9 @@
   padding: 0.6rem;
 }
 
+/* =========================
+   Shared Type Chip Styles
+   ========================= */
 .type-row {
   display: flex;
   flex-wrap: wrap;
@@ -218,6 +260,9 @@
   color: #111827;
 }
 
+/* =========================
+   Detail View Layout
+   ========================= */
 .detail-view {
   max-width: 68rem;
 }
@@ -340,6 +385,9 @@
   font-size: 0.75rem;
 }
 
+/* =========================
+   Mobile Adjustments
+   ========================= */
 @media (max-width: 48rem) {
   .team-slot {
     padding: 0.45rem 0.55rem;
@@ -371,13 +419,20 @@
   }
 }
 
+/* =========================
+  Desktop Sidebar Sticky Behavior
+  ========================= */
 @media (min-width: 75rem) {
-  .sidebar-stack {
+  .grid-sidebar {
+    /* Recent change: sidebar stays fixed in viewport while page scrolls. */
     position: sticky;
     top: 1rem;
+    align-self: start;
+    z-index: 2;
   }
 
   .sidebar-analysis-body {
-    max-height: calc(100vh - 9rem);
+    max-height: none;
+    overflow: visible;
   }
 }

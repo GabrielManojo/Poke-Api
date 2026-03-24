@@ -1,12 +1,22 @@
+// PokemonDetail renders the full single-Pokemon screen.
 function PokemonDetail({
+  // Full Pokemon object for the currently selected card.
   selectedPokemon,
+  // Extra computed/fetched details (weaknesses + evolution cards).
   detailData,
+  // Returns to the grid layout.
   onBack,
+  // Navigate to previous Pokemon detail.
   onPrevious,
+  // Navigate to next Pokemon detail.
   onNext,
+  // Button state for previous navigation.
   hasPrevious,
+  // Button state for next navigation.
   hasNext,
+  // Helper for readable names.
   formatName,
+  // Helper for #0001 number formatting.
   formatNumber,
 }) {
   return (
@@ -39,6 +49,7 @@ function PokemonDetail({
         <section className="card border-0 shadow-sm detail-card">
           <div className="card-body p-4 p-lg-5">
             <h1 className="h2 mb-4">
+              {/* Header combines human-readable name and padded number. */}
               {formatName(selectedPokemon.name)}{" "}
               {formatNumber(selectedPokemon.id)}
             </h1>
@@ -48,6 +59,7 @@ function PokemonDetail({
                 <div className="detail-image-wrap">
                   <img
                     src={
+                      // Prefer official artwork, fallback to front sprite when missing.
                       selectedPokemon.sprites.other["official-artwork"]
                         .front_default || selectedPokemon.sprites.front_default
                     }
@@ -84,6 +96,7 @@ function PokemonDetail({
                 <div className="mb-4">
                   <p className="detail-label mb-2">Type</p>
                   <div className="type-row">
+                    {/* Render one type chip for each type entry (1 or 2). */}
                     {selectedPokemon.types.map((type) => (
                       <span
                         key={type.type.name}
@@ -100,6 +113,7 @@ function PokemonDetail({
                     Weaknesses (double damage from)
                   </p>
                   <div className="type-row">
+                    {/* Weaknesses were computed in App.jsx from type endpoints. */}
                     {detailData.weaknesses.map((name) => (
                       <span key={name} className={`weakness-chip type-${name}`}>
                         {formatName(name)}
@@ -142,6 +156,7 @@ function PokemonDetail({
             <section className="mt-4">
               <p className="detail-label mb-3">Evolution Path</p>
               <div className="evolution-strip">
+                {/* Evolution cards come from the species evolution chain fetch. */}
                 {detailData.evolutionPokemons.map((evo) => (
                   <article key={evo.id} className="evolution-card">
                     <img src={evo.image} alt={evo.name} className="img-fluid" />
@@ -162,4 +177,5 @@ function PokemonDetail({
   );
 }
 
+// Export so App.jsx can render this when selectedPokemon + detailData are ready.
 export default PokemonDetail;

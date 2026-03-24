@@ -1,5 +1,6 @@
 // Import the separate TeamSidebar component so this file only handles the grid.
 import TeamSidebar from "./TeamSidebar";
+import TeamWeaknessSidebar from "./TeamWeaknessSidebar";
 
 // PokemonGrid is the main catalog screen.
 // It receives all data and callback functions from App.jsx via props.
@@ -28,10 +29,17 @@ function PokemonGrid({
     <main className="app-shell py-5">
       {/* container centres the layout and adds horizontal padding. */}
       <div className="container">
-        {/* Bootstrap row: left 9/12 grid, right 3/12 sticky sidebar. */}
+        {/*
+          Recent change:
+          Layout is now split into 3 desktop columns:
+          1) Main Pokemon grid
+          2) Team card
+          3) Weakness analysis card
+          This keeps both sidebars visible without stacking into one long panel.
+        */}
         <div className="row g-4 align-items-start">
           {/* ── LEFT: Pokemon catalog grid ───────────────────────────── */}
-          <section className="col-12 col-xl-9">
+          <section className="col-12 col-xl-8">
             {/* Page header centred above the card grid. */}
             <div className="row justify-content-center mb-5">
               <div className="col-12 text-center">
@@ -139,20 +147,32 @@ function PokemonGrid({
             )}
           </section>
 
-          {/* ── RIGHT: Sticky team sidebar ───────────────────────────────── */}
+          {/* ── MIDDLE-RIGHT: Sticky team sidebar ────────────────────────── */}
           {/*
             The aside lives outside the main grid section so it can be
             positioned sticky independently. All sidebar logic lives in
             TeamSidebar.jsx — we just forward the props it needs.
           */}
-          <aside className="col-12 col-xl-3">
+          <aside className="col-12 col-md-6 col-xl-2 grid-sidebar">
             <TeamSidebar
               teamPokemons={teamPokemons} // Current team members.
-              teamPokemonWeaknesses={teamPokemonWeaknesses} // Per-member weakness data.
-              teamWeaknesses={teamWeaknesses} // Combined team weakness counts.
               teamLimit={teamLimit} // Maximum 6 slots.
               onRemoveFromTeam={onRemoveFromTeam} // Remove callback from App.
               formatName={formatName} // Name formatter helper.
+            />
+          </aside>
+
+          {/*
+            Recent change:
+            Weaknesses live in their own sidebar component on the far right,
+            separated from the Team card for better readability.
+          */}
+          {/* ── RIGHT: Weakness sidebar (other side of team) ────────────── */}
+          <aside className="col-12 col-md-6 col-xl-2 grid-sidebar">
+            <TeamWeaknessSidebar
+              teamPokemonWeaknesses={teamPokemonWeaknesses}
+              teamWeaknesses={teamWeaknesses}
+              formatName={formatName}
             />
           </aside>
         </div>
