@@ -1,0 +1,32 @@
+.app-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8f9fa 0%, #eef6ff 100%);
+}
+
+.app-eyebrow {
+  letter-spacing: 0.12rem;
+}
+
+.pokemon-card {
+  border-radius: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pokemon-card:hover {
+  transform: translateY(-0.25rem);
+}
+
+.pokemon-image-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+  border-radius: 0.75rem;
+  background: #f8f9fa;
+}
+
+.pokemon-image-wrap img {
+  width: 7rem;
+  height: 7rem;
+  object-fit: contain;
+}
