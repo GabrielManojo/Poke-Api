@@ -1,100 +1,332 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 function App() {
-  // Stores the full Pokémon data for all fetched Pokémon
   const [pokemons, setPokemons] = useState([]);
-
-  // If the array is still empty, we assume data is loading
-  const isLoading = pokemons.length === 0;
+  const [selectedPokemon, setSelectedPokemon] = useState(null);
+  const [detailData, setDetailData] = useState(null);
+  const [isGridLoading, setIsGridLoading] = useState(true);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    // Function to fetch Pokémon data from the API
     async function fetchPokemons() {
       try {
-        // 1. Fetch the first 151 Pokémon from the main Pokémon endpoint
         const res = await fetch(
           "https://pokeapi.co/api/v2/pokemon?limit=151&offset=0",
         );
-        const data = await res.json();
 
-        // 2. For each Pokémon in the list, fetch detailed data
+        if (!res.ok) {
+          throw new Error("Could not load Pokemon list.");
+        }
+
+        const data = await res.json();
         const fullPokemonData = await Promise.all(
           data.results.map(async (p) => {
-            // Fetch detailed Pokémon data using its URL
             const pokemonRes = await fetch(p.url);
+
+            if (!pokemonRes.ok) {
+              throw new Error("Could not load Pokemon details.");
+            }
+
             const pokemonData = await pokemonRes.json();
-
-            // 3. Fetch species data
-            // This gives access to extra info like evolution chain URL
-            const speciesRes = await fetch(pokemonData.species.url);
-            const speciesData = await speciesRes.json();
-
-            // 4. Fetch evolution chain data using the species endpoint
-            const evolutionRes = await fetch(speciesData.evolution_chain.url);
-            const evolutionData = await evolutionRes.json();
-
-            // 5. Combine Pokémon details with evolution chain data
-            return {
-              ...pokemonData,
-              evolutionChain: evolutionData,
-            };
+            return pokemonData;
           }),
         );
 
-        // Save all combined Pokémon data into state
         setPokemons(fullPokemonData);
-      } catch (error) {
-        // Log any errors to the console
-        console.error("Error fetching Pokémon data:", error);
+      } catch {
+        setErrorMessage("Could not load Pokemon data.");
+      } finally {
+        setIsGridLoading(false);
       }
     }
 
-    // Call the function once when the component mounts
     fetchPokemons();
   }, []);
 
-  // Helper function to collect all evolution names from the chain
-  function getAllEvolutionNames(chain) {
-    const names = [];
+  const sortedPokemons = useMemo(
+    () => [...pokemons].sort((a, b) => a.id - b.id),
+    [pokemons],
+  );
 
-    function traverse(node) {
-      // Add current Pokémon name to the list
-      names.push(node.species.name);
+  const formatName = (name) =>
+    name
+      .split("-")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
 
-      // Recursively go through every evolution branch
-      node.evolves_to.forEach((evolution) => {
-        traverse(evolution);
-      });
+  const formatNumber = (id) => `#${String(id).padStart(4, "0")}`;
+
+  const extractEvolutionNames = (node) => {
+    const names = [node.species.name];
+    if (!node.evolves_to.length) {
+      return names;
     }
 
-    // Start from the beginning of the chain
-    traverse(chain);
+    return [
+      ...names,
+      ...node.evolves_to.flatMap((nextNode) => extractEvolutionNames(nextNode)),
+    ];
+  };
 
-    // Remove duplicate names, capitalize each one, and join with arrows
-    return [...new Set(names)]
-      .map((name) => name.charAt(0).toUpperCase() + name.slice(1))
-      .join(" → ");
+  const openPokemonDetail = async (pokemon) => {
+    setSelectedPokemon(pokemon);
+    setDetailData(null);
+    setIsDetailLoading(true);
+    setErrorMessage("");
+
+    try {
+      const speciesRes = await fetch(pokemon.species.url);
+      if (!speciesRes.ok) {
+        throw new Error("Could not load species data.");
+      }
+
+      const speciesData = await speciesRes.json();
+      const evolutionRes = await fetch(speciesData.evolution_chain.url);
+      if (!evolutionRes.ok) {
+        throw new Error("Could not load evolution chain.");
+      }
+
+      const evolutionData = await evolutionRes.json();
+      const typeResponses = await Promise.all(
+        pokemon.types.map((entry) => fetch(entry.type.url)),
+      );
+
+      const typeData = await Promise.all(
+        typeResponses.map((response) => response.json()),
+      );
+
+      const weaknessNames = [
+        ...new Set(
+          typeData.flatMap((entry) =>
+            entry.damage_relations.double_damage_from.map((type) => type.name),
+          ),
+        ),
+      ];
+
+      const evolutionNames = [
+        ...new Set(extractEvolutionNames(evolutionData.chain)),
+      ];
+      const evolutionPokemons = await Promise.all(
+        evolutionNames.map(async (name) => {
+          const response = await fetch(
+            `https://pokeapi.co/api/v2/pokemon/${name}`,
+          );
+          const evoPokemon = await response.json();
+          return {
+            id: evoPokemon.id,
+            name: evoPokemon.name,
+            image: evoPokemon.sprites.front_default,
+            types: evoPokemon.types.map((t) => t.type.name),
+          };
+        }),
+      );
+
+      setDetailData({
+        weaknesses: weaknessNames,
+        evolutionPokemons,
+      });
+    } catch {
+      setErrorMessage("Could not load Pokemon detail view.");
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
+
+  const closePokemonDetail = () => {
+    setSelectedPokemon(null);
+    setDetailData(null);
+    setErrorMessage("");
+  };
+
+  if (isDetailLoading && selectedPokemon) {
+    return (
+      <main className="app-shell py-5">
+        <div className="container detail-view">
+          <button
+            className="btn btn-outline-secondary mb-4"
+            onClick={closePokemonDetail}
+          >
+            Back to grid
+          </button>
+          <div
+            className="alert alert-light border text-center mb-0"
+            role="status"
+          >
+            Loading detail for {formatName(selectedPokemon.name)}...
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (selectedPokemon && detailData) {
+    return (
+      <main className="app-shell py-5">
+        <div className="container detail-view">
+          <button
+            className="btn btn-outline-secondary mb-4"
+            onClick={closePokemonDetail}
+          >
+            Back to grid
+          </button>
+
+          <section className="card border-0 shadow-sm detail-card">
+            <div className="card-body p-4 p-lg-5">
+              <h1 className="h2 mb-4">
+                {formatName(selectedPokemon.name)}{" "}
+                {formatNumber(selectedPokemon.id)}
+              </h1>
+
+              <div className="row g-4 align-items-start">
+                <div className="col-12 col-lg-5">
+                  <div className="detail-image-wrap">
+                    <img
+                      src={
+                        selectedPokemon.sprites.other["official-artwork"]
+                          .front_default ||
+                        selectedPokemon.sprites.front_default
+                      }
+                      alt={selectedPokemon.name}
+                      className="img-fluid"
+                    />
+                  </div>
+                </div>
+
+                <div className="col-12 col-lg-7">
+                  <div className="detail-meta-grid mb-4">
+                    <div>
+                      <p className="detail-label mb-1">Height</p>
+                      <p className="mb-0">
+                        {(selectedPokemon.height / 10).toFixed(1)} m
+                      </p>
+                    </div>
+                    <div>
+                      <p className="detail-label mb-1">Weight</p>
+                      <p className="mb-0">
+                        {(selectedPokemon.weight / 10).toFixed(1)} kg
+                      </p>
+                    </div>
+                    <div className="meta-span-2">
+                      <p className="detail-label mb-1">Abilities</p>
+                      <p className="mb-0">
+                        {selectedPokemon.abilities
+                          .map((ability) => formatName(ability.ability.name))
+                          .join(", ")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <p className="detail-label mb-2">Type</p>
+                    <div className="type-row">
+                      {selectedPokemon.types.map((type) => (
+                        <span key={type.type.name} className="type-chip">
+                          {formatName(type.type.name)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-0">
+                    <p className="detail-label mb-2">
+                      Weaknesses (double damage from)
+                    </p>
+                    <div className="type-row">
+                      {detailData.weaknesses.map((name) => (
+                        <span key={name} className="weakness-chip">
+                          {formatName(name)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <section className="mt-4">
+                <p className="detail-label mb-3">Stats</p>
+                <div className="stat-list">
+                  {selectedPokemon.stats.map((stat) => (
+                    <div key={stat.stat.name} className="stat-row">
+                      <span className="stat-name">
+                        {formatName(stat.stat.name)}
+                      </span>
+                      <div
+                        className="progress stat-progress"
+                        role="progressbar"
+                        aria-valuenow={stat.base_stat}
+                        aria-valuemin="0"
+                        aria-valuemax="200"
+                      >
+                        <div
+                          className="progress-bar"
+                          style={{
+                            width: `${Math.min((stat.base_stat / 200) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="stat-value">{stat.base_stat}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="mt-4">
+                <p className="detail-label mb-3">Evolution Path</p>
+                <div className="evolution-strip">
+                  {detailData.evolutionPokemons.map((evo) => (
+                    <article key={evo.id} className="evolution-card">
+                      <img
+                        src={evo.image}
+                        alt={evo.name}
+                        className="img-fluid"
+                      />
+                      <p className="mb-0 small fw-semibold">
+                        {formatName(evo.name)}
+                      </p>
+                      <p className="mb-0 x-small text-secondary">
+                        {formatNumber(evo.id)}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (errorMessage && !selectedPokemon) {
+    return (
+      <main className="app-shell py-5">
+        <div className="container">
+          <div className="alert alert-danger mb-0" role="alert">
+            {errorMessage}
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
     <main className="app-shell py-5">
       <div className="container">
-        {/* Header section */}
         <div className="row justify-content-center mb-5">
           <div className="col-12 col-xl-8 text-center">
             <p className="text-uppercase fw-semibold text-secondary mb-2 app-eyebrow">
-              Fetching Data
+              Pokedex Layout
             </p>
             <h1 className="display-5 fw-bold mb-3">Pokemon Grid</h1>
             <p className="lead text-secondary mb-0 px-lg-5">
-              A responsive Bootstrap card grid built from the PokeAPI.
+              Click a Pokemon image to open the detailed layout.
             </p>
           </div>
         </div>
 
-        {/* Show loading message until Pokémon data is ready */}
-        {isLoading ? (
+        {isGridLoading ? (
           <div className="row justify-content-center">
             <div className="col-12 col-md-8 col-lg-6">
               <div
@@ -106,62 +338,39 @@ function App() {
             </div>
           </div>
         ) : (
-          // Once data is loaded, display the Pokémon cards in a grid
           <div className="row g-4">
-            {pokemons.map((pokemon) => (
+            {sortedPokemons.map((pokemon) => (
               <div
-                key={pokemon.name} // Unique key for React list rendering
+                key={pokemon.name}
                 className="col-12 col-sm-6 col-lg-4 col-xl-3"
               >
                 <article className="card h-100 shadow-sm border-0 pokemon-card">
-                  <div className="card-body d-flex flex-column p-4">
-                    {/* Pokémon image */}
+                  <div className="card-body d-flex flex-column p-3">
                     <div className="pokemon-image-wrap mb-3">
-                      <img
-                        src={pokemon.sprites.front_default}
-                        alt={pokemon.name}
-                        className="img-fluid"
-                      />
+                      <button
+                        type="button"
+                        className="pokemon-image-button"
+                        onClick={() => openPokemonDetail(pokemon)}
+                      >
+                        <img
+                          src={pokemon.sprites.front_default}
+                          alt={pokemon.name}
+                          className="img-fluid"
+                        />
+                      </button>
                     </div>
 
-                    {/* Pokémon name and Pokédex number */}
-                    <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
-                      <h2 className="h4 text-capitalize mb-0">
-                        {pokemon.name}
-                      </h2>
-                      <span className="badge text-bg-primary">
-                        #{pokemon.id}
-                      </span>
+                    <p className="small text-secondary mb-1 pokemon-number">
+                      {formatNumber(pokemon.id)}
+                    </p>
+                    <h2 className="h4 mb-2">{formatName(pokemon.name)}</h2>
+                    <div className="type-row mt-auto">
+                      {pokemon.types.map((type) => (
+                        <span key={type.type.name} className="type-chip">
+                          {formatName(type.type.name)}
+                        </span>
+                      ))}
                     </div>
-
-                    {/* Pokémon type(s) */}
-                    <p className="mb-2 small text-secondary">
-                      <strong className="text-dark">Type:</strong>{" "}
-                      {pokemon.types.map((type) => type.type.name).join(", ")}
-                    </p>
-
-                    {/* Pokémon abilities */}
-                    <p className="mb-2 small text-secondary">
-                      <strong className="text-dark">Abilities:</strong>{" "}
-                      {pokemon.abilities
-                        .map((ability) => ability.ability.name)
-                        .join(", ")}
-                    </p>
-
-                    {/* First 5 Pokémon moves */}
-                    <p className="mb-2 small text-secondary">
-                      <strong className="text-dark">Moves:</strong>{" "}
-                      {pokemon.moves
-                        .slice(0, 5)
-                        .map((move) => move.move.name)
-                        .join(", ")}
-                    </p>
-
-                    {/* Full evolution chain */}
-                    <p className="mb-0 small text-secondary">
-                      <strong className="text-dark">Evolution:</strong>{" "}
-                      {getAllEvolutionNames(pokemon.evolutionChain.chain)}
-                    </p>
                   </div>
                 </article>
               </div>
