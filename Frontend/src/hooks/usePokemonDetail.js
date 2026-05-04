@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { fetchPokemonDetail } from "../api/pokeApi";
+import { fetchPokemon, fetchPokemonDetail } from "../api/pokeApi";
 
 // usePokemonDetail manages everything related to the single-Pokemon view:
 //   • which Pokemon is currently open
@@ -60,6 +60,17 @@ export function usePokemonDetail(sortedPokemons) {
         setErrorMessage("");
     };
 
+    // Fetches the full Pokemon object by name/id then opens the detail view.
+    // Used when navigating from an evolution card (which only has a name/id).
+    const openPokemonDetailByName = async (nameOrId) => {
+        try {
+            const pokemon = await fetchPokemon(nameOrId);
+            await openPokemonDetail(pokemon);
+        } catch {
+            setErrorMessage("Could not load Pokemon detail view.");
+        }
+    };
+
     // Navigation helpers delegate to openPokemonDetail with the adjacent entry.
     const openPreviousPokemon = () => {
         if (previousPokemon) openPokemonDetail(previousPokemon);
@@ -77,6 +88,7 @@ export function usePokemonDetail(sortedPokemons) {
         previousPokemon,
         nextPokemon,
         openPokemonDetail,
+        openPokemonDetailByName,
         closePokemonDetail,
         openPreviousPokemon,
         openNextPokemon,

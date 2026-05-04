@@ -486,6 +486,21 @@
   padding: 0.6rem;
 }
 
+/* Clickable evolution cards show a pointer and a subtle hover lift. */
+.evolution-card--clickable {
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.evolution-card--clickable:hover,
+.evolution-card--clickable:focus {
+  transform: translateY(-0.2rem);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.18);
+  outline: none;
+}
+
 .evolution-card img {
   width: 5rem;
   height: 5rem;
@@ -552,4 +567,3 @@
 .search-legendary-btn {
   white-space: nowrap;
 }
-

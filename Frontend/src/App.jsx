@@ -43,6 +43,7 @@ function App() {
     previousPokemon,
     nextPokemon,
     openPokemonDetail,
+    openPokemonDetailByName,
     closePokemonDetail,
     openPreviousPokemon,
     openNextPokemon,
@@ -77,6 +78,7 @@ function App() {
         onNext={openNextPokemon}
         hasPrevious={Boolean(previousPokemon)}
         hasNext={Boolean(nextPokemon)}
+        onSelectEvolution={openPokemonDetailByName}
         formatName={formatName}
         formatNumber={formatNumber}
       />

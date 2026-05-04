@@ -18,6 +18,8 @@ function PokemonDetail({
   formatName,
   // Helper for #0001 number formatting.
   formatNumber,
+  // Navigates to a different Pokemon's detail view by name (used by evolution cards).
+  onSelectEvolution,
 }) {
   return (
     <main className="app-shell py-5">
@@ -158,7 +160,17 @@ function PokemonDetail({
               <div className="evolution-strip">
                 {/* Evolution cards come from the species evolution chain fetch. */}
                 {detailData.evolutionPokemons.map((evo) => (
-                  <article key={evo.id} className="evolution-card">
+                  <article
+                    key={evo.id}
+                    className="evolution-card evolution-card--clickable"
+                    onClick={() => onSelectEvolution(evo.name)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && onSelectEvolution(evo.name)
+                    }
+                    aria-label={`View ${formatName(evo.name)} details`}
+                  >
                     <img src={evo.image} alt={evo.name} className="img-fluid" />
                     <p className="mb-0 small fw-semibold">
                       {formatName(evo.name)}
