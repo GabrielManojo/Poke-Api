@@ -145,6 +145,117 @@
 }
 
 /* =========================
+   Search Bar
+   ========================= */
+
+/* Wrapper card that visually groups the search controls. */
+.search-bar-wrapper {
+  background: #ffffff;
+  border: 0.0625rem solid #dde3ea;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+/* Remove the default browser border between the icon addon and the input
+   so the two elements feel like a single control. */
+.search-icon-addon {
+  color: #6b7280;
+  border-right: none;
+  padding-right: 0.5rem;
+}
+
+/* Ensure the input's left border disappears so the icon addon merges cleanly. */
+.search-input:focus {
+  box-shadow: none;
+  border-color: #86b7fe;
+}
+
+/* Match the select height and radius to the input next to it. */
+.search-select {
+  border-color: #dee2e6;
+}
+
+.search-select:focus {
+  box-shadow: none;
+  border-color: #86b7fe;
+}
+
+/* Small "Clear" button sits flush-right next to the result count. */
+.search-clear-btn {
+  white-space: nowrap;
+}
+
+/* Muted result count text ("42 / 151 shown"). */
+.search-result-count {
+  white-space: nowrap;
+}
+
+/* No-results helper text shown below the controls. */
+.search-no-results {
+  color: #6b7280;
+}
+
+/* Label above the type chip row. */
+.search-type-label {
+  color: #374151;
+  margin-bottom: 0;
+}
+
+/* Wraps all 18 type chip toggle buttons. */
+.type-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* Base styles for each toggleable type chip button.
+   The type-chip and type-${name} classes from the shared section supply colour. */
+.type-filter-chip {
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  transition:
+    opacity 0.15s ease,
+    transform 0.1s ease,
+    outline 0.1s ease;
+  outline: 0.15rem solid transparent;
+  outline-offset: 0.1rem;
+}
+
+/* Active (selected) chip: full opacity + a visible outline ring. */
+.type-filter-chip--active {
+  opacity: 1;
+  outline-color: currentColor;
+  transform: scale(1.08);
+}
+
+/* Inactive chip: dim it so active chips stand out clearly. */
+.type-filter-chip--inactive {
+  opacity: 0.38;
+}
+
+.type-filter-chip--inactive:hover {
+  opacity: 0.7;
+}
+
+/* =========================
+   Load More Button
+   ========================= */
+.load-more-wrapper {
+  padding: 0.5rem 0 1rem;
+}
+
+.load-more-btn {
+  min-width: 10rem;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.02rem;
+}
+
+/* =========================
    Shared Type Chip Styles
    ========================= */
 .type-row {
@@ -436,3 +547,9 @@
     overflow: visible;
   }
 }
+
+/* Legendary filter button in the search bar. */
+.search-legendary-btn {
+  white-space: nowrap;
+}
+

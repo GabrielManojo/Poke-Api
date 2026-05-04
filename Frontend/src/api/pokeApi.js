@@ -22,10 +22,11 @@ async function apiFetch(path, options = {}) {
 
 // ─── Pokemon ─────────────────────────────────────────────────────────────────
 
-// Fetches the full list of Pokemon from the backend.
-// Returns an array of fully-hydrated Pokemon objects (id, name, types, etc.).
-export async function fetchPokemonList() {
-    return apiFetch("/pokemon");
+// Fetches one page of Pokemon from the backend.
+// Returns:
+// { results, total, limit, offset, nextOffset, hasMore }
+export async function fetchPokemonList({ limit = 151, offset = 0 } = {}) {
+    return apiFetch(`/pokemon?limit=${limit}&offset=${offset}`);
 }
 
 // Fetches a single Pokemon by name or numeric ID.

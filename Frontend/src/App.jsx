@@ -17,6 +17,11 @@ function App() {
     sortedPokemons,
     isGridLoading,
     errorMessage: listError,
+    loadMorePokemons,
+    hasMorePokemons,
+    isLoadingMorePokemons,
+    loadedPokemonCount,
+    totalPokemons,
   } = usePokemonList();
 
   // Manages team composition and computes weakness summaries.
@@ -95,6 +100,11 @@ function App() {
       teamLimit={teamLimit}
       formatName={formatName}
       formatNumber={formatNumber}
+      onLoadMorePokemons={loadMorePokemons}
+      hasMorePokemons={hasMorePokemons}
+      isLoadingMorePokemons={isLoadingMorePokemons}
+      loadedPokemonCount={loadedPokemonCount}
+      totalPokemons={totalPokemons}
     />
   );
 }

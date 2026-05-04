@@ -24,13 +24,36 @@ function extractEvolutionNames(node) {
 }
 
 // ─── GET /api/pokemon ─────────────────────────────────────────────────────────
-// Returns the first N fully-hydrated Pokemon objects.
-// N defaults to 151 but can be overridden by the POKEMON_LIMIT env variable.
-router.get("/", async (_req, res) => {
+// Returns fully-hydrated Pokemon objects in pages.
+// Query params:
+//   - limit  (default 151)
+//   - offset (default 0)
+// Total is capped by POKEMON_LIMIT (defaults to 1025).
+router.get("/", async (req, res) => {
     try {
-        const limit = process.env.POKEMON_LIMIT || 151;
+        const totalLimit = Number(process.env.POKEMON_LIMIT || 151);
+        const requestedLimit = Number(req.query.limit || 151);
+        const requestedOffset = Number(req.query.offset || 0);
+
+        const safeOffset = Math.max(0, requestedOffset);
+        const safeLimit = Math.max(1, requestedLimit);
+        const remaining = Math.max(totalLimit - safeOffset, 0);
+        const pageLimit = Math.min(safeLimit, remaining);
+
+        // If the requested offset is past the configured max, return an empty page.
+        if (pageLimit === 0) {
+            return res.json({
+                results: [],
+                total: totalLimit,
+                limit: safeLimit,
+                offset: safeOffset,
+                nextOffset: null,
+                hasMore: false,
+            });
+        }
+
         const listData = await cachedFetch(
-            `${POKEAPI}/pokemon?limit=${limit}&offset=0`
+            `${POKEAPI}/pokemon?limit=${pageLimit}&offset=${safeOffset}`
         );
 
         // Fetch every Pokemon's full data in parallel.
@@ -39,7 +62,16 @@ router.get("/", async (_req, res) => {
             listData.results.map((entry) => cachedFetch(entry.url))
         );
 
-        res.json(fullPokemonData);
+        const nextOffset = safeOffset + pageLimit;
+
+        res.json({
+            results: fullPokemonData,
+            total: totalLimit,
+            limit: pageLimit,
+            offset: safeOffset,
+            nextOffset: nextOffset < totalLimit ? nextOffset : null,
+            hasMore: nextOffset < totalLimit,
+        });
     } catch (error) {
         console.error("[GET /api/pokemon]", error.message);
         res.status(500).json({ error: "Could not load Pokemon list." });

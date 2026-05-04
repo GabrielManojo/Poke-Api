@@ -1,12 +1,15 @@
 // Import the separate TeamSidebar component so this file only handles the grid.
+import { useState } from "react";
 import TeamSidebar from "./TeamSidebar";
 import TeamWeaknessSidebar from "./TeamWeaknessSidebar";
+import SearchBar from "./SearchBar";
+import { useSearch, PAGE_SIZE } from "../hooks/useSearch";
 
 // PokemonGrid is the main catalog screen.
 // It receives all data and callback functions from App.jsx via props.
 function PokemonGrid({
   isGridLoading, // true while the initial 1025-Pokemon fetch is in progress.
-  sortedPokemons, // Full Pokemon array sorted by Pokédex ID.
+  sortedPokemons, // Full Pokemon array sorted by Pok�dex ID.
   onSelectPokemon, // Opens the detail view for a single Pokemon.
   onAddToTeam, // Adds a Pokemon to the team sidebar.
   onRemoveFromTeam, // Removes a Pokemon from the team sidebar.
@@ -14,8 +17,13 @@ function PokemonGrid({
   teamPokemonWeaknesses, // Per-member weakness data computed in App.jsx.
   teamWeaknesses, // Aggregated team-wide weakness counts.
   teamLimit, // Maximum allowed team size (6).
-  formatName, // Converts "mr-mime" → "Mr Mime".
-  formatNumber, // Converts 1 → "#0001".
+  formatName, // Converts "mr-mime" ? "Mr Mime".
+  formatNumber, // Converts 1 ? "#0001".
+  onLoadMorePokemons, // Fetches the next server page of pokemon.
+  hasMorePokemons, // True while there are more pokemon on the server.
+  isLoadingMorePokemons, // True while the next server page is loading.
+  loadedPokemonCount, // Number currently loaded into the frontend state.
+  totalPokemons, // Max total configured by backend (typically 1025).
 }) {
   // Build a Set of IDs so checking "is this Pokemon already in the team?"
   // is an O(1) operation instead of looping the array every render.
@@ -23,6 +31,77 @@ function PokemonGrid({
 
   // Used to disable every "Add to my team" button once 6 members are chosen.
   const isTeamFull = teamPokemons.length >= teamLimit;
+
+  // Search/filter state and the derived filtered list.
+  // Filtering happens client-side � all pokemon are already in sortedPokemons.
+  const {
+    nameQuery,
+    setNameQuery,
+    selectedTypes,
+    toggleType,
+    legendaryOnly,
+    setLegendaryOnly,
+    filteredPokemons,
+    clearSearch,
+    isFiltered,
+  } = useSearch(sortedPokemons);
+
+  // How many pokemon are currently visible in the grid.
+  // Starts at PAGE_SIZE and grows by PAGE_SIZE each time the user clicks "Load more".
+  // Resets to PAGE_SIZE when a filter action is triggered.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Reset pagination when the name query changes.
+  const handleNameChange = (nextQuery) => {
+    setNameQuery(nextQuery);
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  // Reset pagination when any type chip is toggled.
+  const handleToggleType = (typeName) => {
+    toggleType(typeName);
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  // Reset pagination when legendary-only filter is toggled.
+  const handleToggleLegendary = () => {
+    setLegendaryOnly((prev) => !prev);
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  // Reset pagination when all filters are cleared.
+  const handleClearSearch = () => {
+    clearSearch();
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  // The slice of the filtered list that is actually rendered right now.
+  const visiblePokemons = filteredPokemons.slice(0, visibleCount);
+
+  // True when there are more pokemon beyond the current visible window.
+  const hasMore = visibleCount < filteredPokemons.length;
+
+  // Appends one more page of results.
+  // If we've already displayed all locally loaded pokemon, ask the backend
+  // for the next server page first (151 more), then reveal the next UI page.
+  const loadMore = async () => {
+    const hasLocalMore = visibleCount < filteredPokemons.length;
+
+    if (hasLocalMore) {
+      setVisibleCount((prev) => prev + PAGE_SIZE);
+      return;
+    }
+
+    if (hasMorePokemons && !isLoadingMorePokemons) {
+      await onLoadMorePokemons();
+    }
+
+    setVisibleCount((prev) => prev + PAGE_SIZE);
+  };
+
+  // Keep the same button visible when we can either show more local cards
+  // or fetch more pokemon from the server.
+  const canLoadMore = hasMore || hasMorePokemons;
 
   return (
     // app-shell applies the full-height gradient background.
@@ -38,20 +117,37 @@ function PokemonGrid({
           This keeps both sidebars visible without stacking into one long panel.
         */}
         <div className="row g-4 align-items-start">
-          {/* ── LEFT: Pokemon catalog grid ───────────────────────────── */}
+          {/* -- LEFT: Pokemon catalog grid ----------------------------- */}
           <section className="col-12 col-xl-8">
             {/* Page header centred above the card grid. */}
-            <div className="row justify-content-center mb-5">
+            <div className="row justify-content-center mb-4">
               <div className="col-12 text-center">
-                <p className="text-uppercase fw-semibold text-secondary mb-2 app-eyebrow">
-                  Pokedex Layout
-                </p>
-                <h1 className="display-5 fw-bold mb-3">Pokemon Grid</h1>
+                <h1 className="display-5 fw-bold mb-3">Pokedex</h1>
                 <p className="lead text-secondary mb-0 px-lg-5">
                   Click a Pokemon image to open the detailed layout.
                 </p>
+                <p className="small text-secondary mt-2 mb-0">
+                  Loaded {loadedPokemonCount} / {totalPokemons || 1025}
+                </p>
               </div>
             </div>
+
+            {/* -- Search & filter bar ------------------------------------- */}
+            {/* Only shown once data is loaded so we don't filter an empty list. */}
+            {!isGridLoading && (
+              <SearchBar
+                nameQuery={nameQuery}
+                onNameChange={handleNameChange}
+                selectedTypes={selectedTypes}
+                onToggleType={handleToggleType}
+                legendaryOnly={legendaryOnly}
+                onToggleLegendary={handleToggleLegendary}
+                onClear={handleClearSearch}
+                isFiltered={isFiltered}
+                resultCount={filteredPokemons.length}
+                totalCount={sortedPokemons.length}
+              />
+            )}
 
             {/*
               Show a loading alert while the API calls are in flight,
@@ -72,7 +168,8 @@ function PokemonGrid({
             ) : (
               // Responsive grid: 1 col on xs, 2 on sm, 3 on lg, 4 on xxl.
               <div className="row g-4">
-                {sortedPokemons.map((pokemon) => {
+                {/* Render only the visible slice; "Load more" extends it. */}
+                {visiblePokemons.map((pokemon) => {
                   // Check the Set so the button reacts instantly without re-fetching.
                   const isInTeam = teamIds.has(pokemon.id);
 
@@ -101,7 +198,7 @@ function PokemonGrid({
                             </button>
                           </div>
 
-                          {/* Pokédex number formatted as "#0001". */}
+                          {/* Pok�dex number formatted as "#0001". */}
                           <p className="small text-secondary mb-1 pokemon-number">
                             {formatNumber(pokemon.id)}
                           </p>
@@ -145,13 +242,35 @@ function PokemonGrid({
                 })}
               </div>
             )}
+
+            {/* -- Load more button ---------------------------------------- */}
+            {/* Only shown when there are more results beyond the current page. */}
+            {!isGridLoading && canLoadMore && (
+              <div className="load-more-wrapper mt-4 text-center">
+                <button
+                  type="button"
+                  className="btn btn-outline-primary load-more-btn"
+                  onClick={loadMore}
+                  disabled={isLoadingMorePokemons}
+                >
+                  {isLoadingMorePokemons
+                    ? "Loading 151 more..."
+                    : hasMore
+                      ? "Load more"
+                      : "Load 151 more"}
+                  <span className="text-secondary ms-2 small">
+                    ({visibleCount} / {filteredPokemons.length})
+                  </span>
+                </button>
+              </div>
+            )}
           </section>
 
-          {/* ── MIDDLE-RIGHT: Sticky team sidebar ────────────────────────── */}
+          {/* -- MIDDLE-RIGHT: Sticky team sidebar -------------------------- */}
           {/*
             The aside lives outside the main grid section so it can be
             positioned sticky independently. All sidebar logic lives in
-            TeamSidebar.jsx — we just forward the props it needs.
+            TeamSidebar.jsx � we just forward the props it needs.
           */}
           <aside className="col-12 col-md-6 col-xl-2 grid-sidebar">
             <TeamSidebar
@@ -167,7 +286,7 @@ function PokemonGrid({
             Weaknesses live in their own sidebar component on the far right,
             separated from the Team card for better readability.
           */}
-          {/* ── RIGHT: Weakness sidebar (other side of team) ────────────── */}
+          {/* -- RIGHT: Weakness sidebar (other side of team) -------------- */}
           <aside className="col-12 col-md-6 col-xl-2 grid-sidebar">
             <TeamWeaknessSidebar
               teamPokemonWeaknesses={teamPokemonWeaknesses}
