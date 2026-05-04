@@ -28,7 +28,7 @@ function extractEvolutionNames(node) {
 // Query params:
 //   - limit  (default 151)
 //   - offset (default 0)
-// Total is capped by POKEMON_LIMIT (defaults to 1025).
+// Total is capped by POKEMON_LIMIT (defaults to 151).
 router.get("/", async (req, res) => {
     try {
         const totalLimit = Number(process.env.POKEMON_LIMIT || 151);
