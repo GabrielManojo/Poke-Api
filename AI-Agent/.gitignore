@@ -1,0 +1,8 @@
+# Environment config — never commit your real Gemini API key.
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/

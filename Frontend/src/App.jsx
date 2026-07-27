@@ -44,6 +44,9 @@ function App() {
     teamLimit,
     addPokemonToTeam,
     removePokemonFromTeam,
+    aiRecommendation,
+    isLoadingRecommendation,
+    recommendationError,
   } = useTeamManager();
 
   // Manages which Pokemon is open in the detail view and loads its extra data.
@@ -125,6 +128,9 @@ function App() {
       isSearchingByName={isSearchingByName}
       onEnsureLegendariesLoaded={ensureLegendariesLoaded}
       isLoadingLegendaries={isLoadingLegendaries}
+      aiRecommendation={aiRecommendation}
+      isLoadingRecommendation={isLoadingRecommendation}
+      recommendationError={recommendationError}
     />
   );
 }

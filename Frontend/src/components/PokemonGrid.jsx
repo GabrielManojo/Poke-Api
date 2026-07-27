@@ -2,6 +2,7 @@
 import { useState } from "react";
 import TeamSidebar from "./TeamSidebar";
 import TeamWeaknessSidebar from "./TeamWeaknessSidebar";
+import AiRecommendationCard from "./AiRecommendationCard";
 import SearchBar from "./SearchBar";
 import GenerationSelector from "./GenerationSelector";
 import { useSearch, PAGE_SIZE } from "../hooks/useSearch";
@@ -31,6 +32,9 @@ function PokemonGrid({
   isSearchingByName, // True while a backend name search is in flight.
   onEnsureLegendariesLoaded, // Fetches every legendary in range by ID when the filter turns on.
   isLoadingLegendaries, // True while that legendary top-up fetch is in flight.
+  aiRecommendation, // Latest Gemini advice text for the current team.
+  isLoadingRecommendation, // True while a recommendation request is in flight.
+  recommendationError, // Non-empty string if the last recommendation request failed.
 }) {
   // Build a Set of IDs so checking "is this Pokemon already in the team?"
   // is an O(1) operation instead of looping the array every render.
@@ -137,7 +141,7 @@ function PokemonGrid({
         */}
         <div className="row g-4 align-items-start">
           {/* -- LEFT: Pokemon catalog grid ----------------------------- */}
-          <section className="col-12 col-xl-8">
+          <section className="col-12 col-xl-7">
             {/* Page header centred above the card grid. */}
             <div className="row justify-content-center mb-4">
               <div className="col-12 text-center">
@@ -320,11 +324,24 @@ function PokemonGrid({
             separated from the Team card for better readability.
           */}
           {/* -- RIGHT: Weakness sidebar (other side of team) -------------- */}
-          <aside className="col-12 col-md-6 col-xl-2 grid-sidebar">
+          <aside className="col-12 col-md-6 col-xl-3 grid-sidebar d-flex flex-column gap-3">
             <TeamWeaknessSidebar
               teamPokemonWeaknesses={teamPokemonWeaknesses}
               teamWeaknesses={teamWeaknesses}
               formatName={formatName}
+            />
+            {/*
+              AI Team Advisor (Gemini, via the Python AI-Agent). Stacked below
+              the weakness card in the same column rather than adding a
+              fourth grid column. Column widths are 7/2/3 (grid/team/weakness)
+              — the weakness+AI column got the extra width since it holds the
+              most text (per-Pokemon weaknesses, shared summary, AI advice).
+            */}
+            <AiRecommendationCard
+              recommendation={aiRecommendation}
+              isLoadingRecommendation={isLoadingRecommendation}
+              recommendationError={recommendationError}
+              hasTeam={teamPokemons.length > 0}
             />
           </aside>
         </div>

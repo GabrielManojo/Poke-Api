@@ -67,6 +67,16 @@ export async function fetchPokemonDetail(nameOrId) {
 
 // ─── Team ─────────────────────────────────────────────────────────────────────
 
+// Shared shape: maps full Pokemon objects to the minimal payload both team
+// endpoints need.
+function toTeamPayload(teamPokemons) {
+    return teamPokemons.map((pokemon) => ({
+        id: pokemon.id,
+        name: pokemon.name,
+        typeNames: pokemon.types.map((entry) => entry.type.name),
+    }));
+}
+
 // Sends the current team to the backend and receives the full weakness analysis.
 // Moving this computation server-side means the frontend just passes a minimal
 // payload and renders the response — no aggregation logic in React.
@@ -74,16 +84,20 @@ export async function fetchPokemonDetail(nameOrId) {
 // teamPokemons — the full Pokemon objects the user has added to their team.
 // Returns: { pokemonWeaknesses: [...], teamWeaknesses: [...] }
 export async function fetchTeamWeaknesses(teamPokemons) {
-    // Map each Pokemon to the minimal payload the backend needs.
-    const team = teamPokemons.map((pokemon) => ({
-        id: pokemon.id,
-        name: pokemon.name,
-        typeNames: pokemon.types.map((entry) => entry.type.name),
-    }));
-
     return apiFetch("/team/weaknesses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ team }),
+        body: JSON.stringify({ team: toTeamPayload(teamPokemons) }),
+    });
+}
+
+// Asks the backend (which forwards to the Python/Gemini AI-Agent) for advice
+// on the current team — whether it's good, and what to add if not.
+// Returns: { recommendation: string }
+export async function fetchTeamRecommendation(teamPokemons) {
+    return apiFetch("/team/recommendation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team: toTeamPayload(teamPokemons) }),
     });
 }

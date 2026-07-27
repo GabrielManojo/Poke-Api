@@ -12,10 +12,18 @@ dist
 dist-ssr
 *.local
 
-# Environment config (README documents Backend/.env as something each
-# developer creates locally, e.g. to override PORT/POKEMON_LIMIT).
+# Environment config — each developer creates their own .env locally
+# (Backend/.env, AI-Agent/.env). Explicitly keep .env.example/.env.sample
+# template files tracked so the required variables stay documented.
 .env
-.env.*
+!.env.example
+!.env.sample
+
+# Python (AI-Agent)
+__pycache__/
+*.pyc
+venv/
+.venv/
 
 # Editor directories and files
 .vscode/*
