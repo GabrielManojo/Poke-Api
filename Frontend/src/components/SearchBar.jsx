@@ -1,7 +1,7 @@
 import { ALL_TYPES } from "../hooks/useSearch";
 
 // SearchBar renders a name input, clickable type-chip toggles, and a clear button.
-// Multiple type chips can be active at once — a pokemon must have ALL active types.
+// Multiple type chips can be active at once â€” a pokemon must have ALL active types.
 // All state lives in the useSearch hook; this component is purely presentational.
 function SearchBar({
   nameQuery, // Current text in the name input.
@@ -91,7 +91,7 @@ function SearchBar({
             </span>
           )}
         </p>
-        {/* One chip per type — active chips are visually highlighted. */}
+        {/* One chip per type â€” active chips are visually highlighted. */}
         <div className="type-filter-chips">
           {ALL_TYPES.map((type) => {
             const isActive = selectedTypes.has(type);

@@ -9,7 +9,7 @@ import { useSearch, PAGE_SIZE } from "../hooks/useSearch";
 // It receives all data and callback functions from App.jsx via props.
 function PokemonGrid({
   isGridLoading, // true while the initial 1025-Pokemon fetch is in progress.
-  sortedPokemons, // Full Pokemon array sorted by Pokédex ID.
+  sortedPokemons, // Full Pokemon array sorted by PokÃ©dex ID.
   onSelectPokemon, // Opens the detail view for a single Pokemon.
   onAddToTeam, // Adds a Pokemon to the team sidebar.
   onRemoveFromTeam, // Removes a Pokemon from the team sidebar.
@@ -33,7 +33,7 @@ function PokemonGrid({
   const isTeamFull = teamPokemons.length >= teamLimit;
 
   // Search/filter state and the derived filtered list.
-  // Filtering happens client-side — all pokemon are already in sortedPokemons.
+  // Filtering happens client-side â€” all pokemon are already in sortedPokemons.
   const {
     nameQuery,
     setNameQuery,
@@ -198,7 +198,7 @@ function PokemonGrid({
                             </button>
                           </div>
 
-                          {/* Pokédex number formatted as "#0001". */}
+                          {/* PokÃ©dex number formatted as "#0001". */}
                           <p className="small text-secondary mb-1 pokemon-number">
                             {formatNumber(pokemon.id)}
                           </p>
@@ -270,7 +270,7 @@ function PokemonGrid({
           {/*
             The aside lives outside the main grid section so it can be
             positioned sticky independently. All sidebar logic lives in
-            TeamSidebar.jsx — we just forward the props it needs.
+            TeamSidebar.jsx â€” we just forward the props it needs.
           */}
           <aside className="col-12 col-md-6 col-xl-2 grid-sidebar">
             <TeamSidebar

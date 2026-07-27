@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-// All 18 standard Pokemon types — used to render the type chip toggles.
+// All 18 standard Pokemon types â€” used to render the type chip toggles.
 export const ALL_TYPES = [
     "normal", "fire", "water", "electric", "grass", "ice",
     "fighting", "poison", "ground", "flying", "psychic", "bug",
@@ -36,7 +36,7 @@ export function useSearch(sortedPokemons) {
     const [nameQuery, setNameQuery] = useState("");
 
     // Set of type name strings the user has toggled on.
-    // Empty Set means "no type filter — show all".
+    // Empty Set means "no type filter â€” show all".
     // Multiple selected types act as AND: the pokemon must have ALL of them.
     const [selectedTypes, setSelectedTypes] = useState(new Set());
     // Toggle for showing only legendary pokemon.
@@ -95,7 +95,7 @@ export function useSearch(sortedPokemons) {
         setLegendaryOnly,
         filteredPokemons,
         clearSearch,
-        // True when at least one filter is active — used to show result count / clear button.
+        // True when at least one filter is active â€” used to show result count / clear button.
         isFiltered: nameQuery.trim() !== "" || selectedTypes.size > 0 || legendaryOnly,
     };
 }
