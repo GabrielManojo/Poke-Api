@@ -29,8 +29,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "overrides": {
-    "brace-expansion": "^5.0.8"
-  }
+  "description": ""
 }

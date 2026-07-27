@@ -25,13 +25,35 @@ async function apiFetch(path, options = {}) {
 // Fetches one page of Pokemon from the backend.
 // Returns:
 // { results, total, limit, offset, nextOffset, hasMore }
-export async function fetchPokemonList({ limit = 151, offset = 0 } = {}) {
+export async function fetchPokemonList({ limit = 10, offset = 0 } = {}) {
     return apiFetch(`/pokemon?limit=${limit}&offset=${offset}`);
 }
 
 // Fetches a single Pokemon by name or numeric ID.
 export async function fetchPokemon(nameOrId) {
     return apiFetch(`/pokemon/${nameOrId}`);
+}
+
+// Searches Pokemon names (case-insensitive substring) across a Dex range,
+// so a match can be found and shown even if it hasn't been paginated into
+// the frontend's already-loaded list yet.
+// `start`/`end` are optional 1-based inclusive Dex numbers (used to scope
+// the search to the currently selected generation); omit for the full range.
+// Returns: { results, matchCount }
+export async function searchPokemonByName({ query, start, end }) {
+    const params = new URLSearchParams({ q: query });
+    if (start != null) params.set("start", start);
+    if (end != null) params.set("end", end);
+
+    return apiFetch(`/pokemon/search?${params.toString()}`);
+}
+
+// Hydrates a specific list of Dex IDs in one call — used to load "Legendary
+// only" matches directly by ID instead of paginating until we happen to
+// reach them.
+// Returns: { results }
+export async function fetchPokemonBatch(ids) {
+    return apiFetch(`/pokemon/batch?ids=${ids.join(",")}`);
 }
 
 // Fetches all detail data for the detail view in a SINGLE backend call.

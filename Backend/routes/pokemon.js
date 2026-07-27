@@ -78,6 +78,91 @@ router.get("/", async (req, res) => {
     }
 });
 
+// ─── GET /api/pokemon/batch ─────────────────────────────────────────────────────
+// Hydrates a specific list of Dex IDs/names in parallel. Used by the
+// "Legendary only" filter: the frontend knows the legendary Dex IDs already
+// (no search needed) and just needs them fetched even if normal sequential
+// pagination hasn't reached them yet. Registered ABOVE /:nameOrId so "batch"
+// isn't swallowed as a nameOrId lookup.
+// Query params:
+//   - ids  required. Comma-separated Dex IDs or names, e.g. "144,145,146".
+router.get("/batch", async (req, res) => {
+    try {
+        const idsParam = String(req.query.ids || "").trim();
+
+        if (!idsParam) {
+            return res.json({ results: [] });
+        }
+
+        const ids = idsParam
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean);
+
+        // Safety cap so a malformed/huge id list can't fan out into hundreds
+        // of upstream requests at once.
+        const MAX_BATCH_SIZE = 150;
+        const limitedIds = ids.slice(0, MAX_BATCH_SIZE);
+
+        const results = await Promise.all(
+            limitedIds.map((id) => cachedFetch(`${POKEAPI}/pokemon/${id}`))
+        );
+
+        res.json({ results });
+    } catch (error) {
+        console.error("[GET /api/pokemon/batch]", error.message);
+        res.status(500).json({ error: "Could not load Pokemon batch." });
+    }
+});
+
+// ─── GET /api/pokemon/search ───────────────────────────────────────────────────
+// Searches Pokemon names (case-insensitive substring match) across a Dex
+// range, so the frontend can find a match even if it hasn't been paginated
+// into the loaded list yet. Registered ABOVE /:nameOrId — otherwise Express
+// would treat "search" itself as a nameOrId lookup.
+// Query params:
+//   - q      required. Case-insensitive substring to match against names.
+//   - start  1-based Dex number to start from (default 1).
+//   - end    1-based Dex number to end at, inclusive (default POKEMON_LIMIT).
+router.get("/search", async (req, res) => {
+    try {
+        const totalLimit = Number(process.env.POKEMON_LIMIT || 151);
+        const query = String(req.query.q || "").trim().toLowerCase();
+        const start = Math.max(1, Number(req.query.start) || 1);
+        const end = Math.min(totalLimit, Number(req.query.end) || totalLimit);
+
+        if (!query || start > end) {
+            return res.json({ results: [], matchCount: 0 });
+        }
+
+        // Lightweight master list for the range — just { name, url } pairs.
+        // Cheap even across the full 1025 because nothing is hydrated here.
+        const offset = start - 1;
+        const limit = end - start + 1;
+        const listData = await cachedFetch(
+            `${POKEAPI}/pokemon?limit=${limit}&offset=${offset}`
+        );
+
+        const matches = listData.results.filter((entry) =>
+            entry.name.includes(query)
+        );
+
+        // Cap how many we hydrate per request so a broad query (e.g. a
+        // single letter) can't trigger hundreds of upstream fetches at once.
+        const MAX_SEARCH_RESULTS = 30;
+        const limitedMatches = matches.slice(0, MAX_SEARCH_RESULTS);
+
+        const results = await Promise.all(
+            limitedMatches.map((entry) => cachedFetch(entry.url))
+        );
+
+        res.json({ results, matchCount: matches.length });
+    } catch (error) {
+        console.error("[GET /api/pokemon/search]", error.message);
+        res.status(500).json({ error: "Could not search Pokemon." });
+    }
+});
+
 // ─── GET /api/pokemon/:nameOrId ───────────────────────────────────────────────
 // Returns the full PokeAPI data object for a single Pokemon.
 // Used by the evolution chain loader to get sprite + types for each stage.

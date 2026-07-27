@@ -1,6 +1,7 @@
 // App.jsx is intentionally thin — all state and data-fetching logic lives in
 // dedicated custom hooks. This file only wires hooks together and decides which
 // top-level view to render.
+import { useState } from "react";
 import "./App.css";
 import DetailLoading from "./components/DetailLoading";
 import ErrorState from "./components/ErrorState";
@@ -10,9 +11,16 @@ import { usePokemonList } from "./hooks/usePokemonList";
 import { usePokemonDetail } from "./hooks/usePokemonDetail";
 import { useTeamManager } from "./hooks/useTeamManager";
 import { formatName, formatNumber } from "./utils/pokemonUtils";
+import { getGenerationById } from "./utils/generations";
 
 function App() {
-  // Fetches and sorts the full Pokédex from our backend.
+  // Which generation is selected in the grid ("All" = null). Owned here
+  // (rather than inside useSearch) because it changes what usePokemonList
+  // fetches from the backend, not just what's filtered from what's loaded.
+  const [selectedGenerationId, setSelectedGenerationId] = useState(null);
+  const selectedGeneration = getGenerationById(selectedGenerationId);
+
+  // Fetches and sorts the selected Dex range from our backend.
   const {
     sortedPokemons,
     isGridLoading,
@@ -22,7 +30,11 @@ function App() {
     isLoadingMorePokemons,
     loadedPokemonCount,
     totalPokemons,
-  } = usePokemonList();
+    searchPokemonByName,
+    isSearchingByName,
+    ensureLegendariesLoaded,
+    isLoadingLegendaries,
+  } = usePokemonList(selectedGeneration);
 
   // Manages team composition and computes weakness summaries.
   const {
@@ -107,6 +119,12 @@ function App() {
       isLoadingMorePokemons={isLoadingMorePokemons}
       loadedPokemonCount={loadedPokemonCount}
       totalPokemons={totalPokemons}
+      selectedGenerationId={selectedGenerationId}
+      onGenerationChange={setSelectedGenerationId}
+      onSearchPokemon={searchPokemonByName}
+      isSearchingByName={isSearchingByName}
+      onEnsureLegendariesLoaded={ensureLegendariesLoaded}
+      isLoadingLegendaries={isLoadingLegendaries}
     />
   );
 }

@@ -1,4 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+// How long to wait after the user stops typing before asking the backend
+// to search for name matches outside what's already loaded.
+const NAME_SEARCH_DEBOUNCE_MS = 350;
 
 // All 18 standard Pokemon types — used to render the type chip toggles.
 export const ALL_TYPES = [
@@ -9,7 +13,9 @@ export const ALL_TYPES = [
 
 // Known legendary Pokemon IDs (National Dex) up to current generations.
 // This powers the "Legendary only" filter button in the search UI.
-const LEGENDARY_IDS = new Set([
+// Exported so usePokemonList can fetch these directly by ID when the filter
+// is toggled on, instead of relying on them already being paginated in.
+export const LEGENDARY_IDS = new Set([
     144, 145, 146, 150,
     243, 244, 245, 249, 250,
     377, 378, 379, 380, 381, 382, 383, 384,
@@ -23,17 +29,43 @@ const LEGENDARY_IDS = new Set([
 ]);
 
 // How many pokemon to show per page in the grid.
-export const PAGE_SIZE = 9;
+// Also reused as the backend fetch chunk size (see usePokemonList) so each
+// "Load more" click only ever hydrates 10 new Pokemon instead of a big batch.
+export const PAGE_SIZE = 10;
 
 // useSearch manages the search/filter state and derives the visible pokemon list.
 // It is kept separate from usePokemonList so the list hook stays focused on
 // fetching and the filter logic is easy to find and test on its own.
 //
-// Accepts sortedPokemons (the full sorted list from usePokemonList).
+// Accepts sortedPokemons (the full sorted list from usePokemonList) plus an
+// optional options object:
+//   - onNameSearch(query)      usePokemonList's searchPokemonByName. When
+//     provided, typing a name debounces a backend search so a match shows
+//     up even if it hasn't been paginated into sortedPokemons yet.
+//   - onEnsureLegendaries()    usePokemonList's ensureLegendariesLoaded.
+//     When provided, turning "Legendary only" on fetches every legendary in
+//     the current range directly by ID, instead of only showing whichever
+//     legendaries happened to already be paginated in.
 // Returns the filtered list plus the state values and setters the SearchBar needs.
-export function useSearch(sortedPokemons) {
+export function useSearch(sortedPokemons, { onNameSearch, onEnsureLegendaries } = {}) {
     // Free-text name query typed by the user.
     const [nameQuery, setNameQuery] = useState("");
+
+    // Debounce the backend top-up search: wait until typing pauses so we
+    // don't fire a request on every keystroke.
+    useEffect(() => {
+        const trimmedQuery = nameQuery.trim();
+
+        if (!trimmedQuery || !onNameSearch) {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            onNameSearch(trimmedQuery);
+        }, NAME_SEARCH_DEBOUNCE_MS);
+
+        return () => clearTimeout(timeoutId);
+    }, [nameQuery, onNameSearch]);
 
     // Set of type name strings the user has toggled on.
     // Empty Set means "no type filter — show all".
@@ -41,6 +73,18 @@ export function useSearch(sortedPokemons) {
     const [selectedTypes, setSelectedTypes] = useState(new Set());
     // Toggle for showing only legendary pokemon.
     const [legendaryOnly, setLegendaryOnly] = useState(false);
+
+    // Whenever legendary-only is (or becomes) active, make sure every
+    // legendary in the current range is actually loaded. onEnsureLegendaries
+    // is recreated by usePokemonList whenever the selected generation
+    // changes, so this also re-fires and tops up the new range.
+    useEffect(() => {
+        if (!legendaryOnly || !onEnsureLegendaries) {
+            return;
+        }
+
+        onEnsureLegendaries();
+    }, [legendaryOnly, onEnsureLegendaries]);
 
     // Toggle a single type name in or out of the active filter set.
     const toggleType = (typeName) => {

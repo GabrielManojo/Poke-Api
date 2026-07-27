@@ -14,6 +14,8 @@ function SearchBar({
   isFiltered, // True when at least one filter is active.
   resultCount, // Number of pokemon currently visible.
   totalCount, // Total pokemon in the full list.
+  isSearchingByName, // True while a backend search for the typed name is in flight.
+  isLoadingLegendaries, // True while every legendary in range is being fetched.
 }) {
   return (
     <div className="search-bar-wrapper mb-4">
@@ -50,6 +52,12 @@ function SearchBar({
               aria-label="Search Pokemon by name"
             />
           </div>
+          {/* Lets the user know a match not yet on-screen might still show up. */}
+          {isSearchingByName && (
+            <p className="small text-secondary mt-1 mb-0" role="status">
+              Searching the full Pokedex for a match...
+            </p>
+          )}
         </div>
 
         {/* Clear + result count, right-aligned on desktop. */}
@@ -60,7 +68,11 @@ function SearchBar({
             onClick={onToggleLegendary}
             aria-pressed={legendaryOnly}
           >
-            {legendaryOnly ? "Legendary: On" : "Show Legendaries"}
+            {isLoadingLegendaries
+              ? "Loading legendaries..."
+              : legendaryOnly
+                ? "Legendary: On"
+                : "Show Legendaries"}
           </button>
 
           {isFiltered && (

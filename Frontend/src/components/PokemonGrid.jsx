@@ -3,6 +3,7 @@ import { useState } from "react";
 import TeamSidebar from "./TeamSidebar";
 import TeamWeaknessSidebar from "./TeamWeaknessSidebar";
 import SearchBar from "./SearchBar";
+import GenerationSelector from "./GenerationSelector";
 import { useSearch, PAGE_SIZE } from "../hooks/useSearch";
 
 // PokemonGrid is the main catalog screen.
@@ -24,6 +25,12 @@ function PokemonGrid({
   isLoadingMorePokemons, // True while the next server page is loading.
   loadedPokemonCount, // Number currently loaded into the frontend state.
   totalPokemons, // Max total configured by backend (typically 1025).
+  selectedGenerationId, // Currently selected generation id, or null for "All".
+  onGenerationChange, // Switches which Dex range usePokemonList fetches.
+  onSearchPokemon, // Backend name search — tops up sortedPokemons with matches not yet loaded.
+  isSearchingByName, // True while a backend name search is in flight.
+  onEnsureLegendariesLoaded, // Fetches every legendary in range by ID when the filter turns on.
+  isLoadingLegendaries, // True while that legendary top-up fetch is in flight.
 }) {
   // Build a Set of IDs so checking "is this Pokemon already in the team?"
   // is an O(1) operation instead of looping the array every render.
@@ -33,7 +40,9 @@ function PokemonGrid({
   const isTeamFull = teamPokemons.length >= teamLimit;
 
   // Search/filter state and the derived filtered list.
-  // Filtering happens client-side — all pokemon are already in sortedPokemons.
+  // Type/legendary filtering happens client-side over sortedPokemons, but the
+  // name query also triggers a debounced backend search (via onSearchPokemon)
+  // so a match shows up even if it hasn't been paginated into view yet.
   const {
     nameQuery,
     setNameQuery,
@@ -44,7 +53,10 @@ function PokemonGrid({
     filteredPokemons,
     clearSearch,
     isFiltered,
-  } = useSearch(sortedPokemons);
+  } = useSearch(sortedPokemons, {
+    onNameSearch: onSearchPokemon,
+    onEnsureLegendaries: onEnsureLegendariesLoaded,
+  });
 
   // How many pokemon are currently visible in the grid.
   // Starts at PAGE_SIZE and grows by PAGE_SIZE each time the user clicks "Load more".
@@ -72,6 +84,13 @@ function PokemonGrid({
   // Reset pagination when all filters are cleared.
   const handleClearSearch = () => {
     clearSearch();
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  // Switching generations changes the underlying data (usePokemonList
+  // re-fetches from scratch), so the local page window resets too.
+  const handleGenerationChange = (generationId) => {
+    onGenerationChange(generationId);
     setVisibleCount(PAGE_SIZE);
   };
 
@@ -132,6 +151,18 @@ function PokemonGrid({
               </div>
             </div>
 
+            {/*
+              -- Generation selector -------------------------------------
+              Rendered outside the isGridLoading gate on purpose: choosing a
+              generation is what triggers loading, so the control needs to
+              stay visible (and usable) through that loading state instead
+              of disappearing along with the rest of the search bar.
+            */}
+            <GenerationSelector
+              selectedGenerationId={selectedGenerationId}
+              onSelect={handleGenerationChange}
+            />
+
             {/* -- Search & filter bar ------------------------------------- */}
             {/* Only shown once data is loaded so we don't filter an empty list. */}
             {!isGridLoading && (
@@ -146,6 +177,8 @@ function PokemonGrid({
                 isFiltered={isFiltered}
                 resultCount={filteredPokemons.length}
                 totalCount={sortedPokemons.length}
+                isSearchingByName={isSearchingByName}
+                isLoadingLegendaries={isLoadingLegendaries}
               />
             )}
 
@@ -254,10 +287,10 @@ function PokemonGrid({
                   disabled={isLoadingMorePokemons}
                 >
                   {isLoadingMorePokemons
-                    ? "Loading 151 more..."
+                    ? `Loading ${PAGE_SIZE} more...`
                     : hasMore
                       ? "Load more"
-                      : "Load 151 more"}
+                      : `Load ${PAGE_SIZE} more`}
                   <span className="text-secondary ms-2 small">
                     ({visibleCount} / {filteredPokemons.length})
                   </span>
