@@ -90,6 +90,27 @@ def build_prompt(team, pokemon_weaknesses, team_weaknesses):
     )
 
 
+# Team size and shape are already validated by Backend/routes/team.js before
+# a request ever reaches this service, but this service has no auth of its
+# own and could be called directly (e.g. if ever exposed beyond localhost),
+# so the same checks are repeated here as defense in depth.
+MAX_TEAM_SIZE = 6
+
+
+def validate_team(team):
+    """Returns a list of error strings; empty list means the team is valid."""
+    if not isinstance(team, list):
+        return ["team must be a list"]
+    if len(team) > MAX_TEAM_SIZE:
+        return [f"team must contain at most {MAX_TEAM_SIZE} Pokemon"]
+
+    errors = []
+    for index, member in enumerate(team):
+        if not isinstance(member, dict) or not member.get("name") or "id" not in member:
+            errors.append(f"team[{index}] is missing a valid id/name")
+    return errors
+
+
 @app.route("/recommend", methods=["POST"])
 def recommend():
     data = request.get_json(force=True, silent=True) or {}
@@ -100,9 +121,19 @@ def recommend():
     if not team:
         return jsonify({"recommendation": "Add Pokemon to your team to get AI advice."})
 
-    prompt = build_prompt(team, pokemon_weaknesses, team_weaknesses)
+    validation_errors = validate_team(team)
+    if validation_errors:
+        return jsonify({"error": "; ".join(validation_errors)}), 400
 
     try:
+        # Moved inside the try/except: a malformed team payload previously
+        # made build_prompt() raise an uncaught KeyError here, returning a
+        # raw Flask 500 (and, with debug=True, exposing the interactive
+        # Werkzeug debugger). validate_team() above should catch most bad
+        # input already, but this keeps any remaining edge case from
+        # crashing out unhandled.
+        prompt = build_prompt(team, pokemon_weaknesses, team_weaknesses)
+
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=prompt,

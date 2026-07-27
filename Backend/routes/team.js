@@ -9,12 +9,66 @@ const POKEAPI = "https://pokeapi.co/api/v2";
 // Backend/.env so it can point somewhere other than localhost in deployment.
 const AI_AGENT_URL = process.env.AI_AGENT_URL || "http://localhost:5002";
 
+// Must match the frontend's TEAM_LIMIT (Frontend/src/hooks/useTeamManager.js).
+// Enforced here too so a client that skips the UI can't send an oversized
+// team and force extra PokeAPI/Gemini calls.
+const TEAM_LIMIT = 6;
+
+// The 18 canonical Pokemon type names. Any typeNames value that isn't in
+// this set is dropped before it ever reaches a PokeAPI URL or the Gemini
+// prompt — closes off a URL-injection path through
+// `${POKEAPI}/type/${typeName}` and keeps junk out of the AI prompt.
+const VALID_TYPES = new Set([
+    "normal", "fire", "water", "electric", "grass", "ice", "fighting",
+    "poison", "ground", "flying", "psychic", "bug", "rock", "ghost",
+    "dragon", "dark", "steel", "fairy",
+]);
+
+// ─── Shared request validation ─────────────────────────────────────────────
+// Used by both /weaknesses and /recommendation to reject malformed or
+// oversized payloads before any PokeAPI or Gemini call is made. Throws a
+// descriptive Error on invalid input; returns a sanitized team array
+// otherwise (bad typeNames entries silently filtered rather than rejecting
+// the whole request, since that's recoverable).
+function validateAndSanitizeTeam(team) {
+    if (team === undefined || team === null) {
+        return [];
+    }
+    if (!Array.isArray(team)) {
+        throw new Error("team must be an array");
+    }
+    if (team.length > TEAM_LIMIT) {
+        throw new Error(`team must contain at most ${TEAM_LIMIT} Pokemon`);
+    }
+
+    return team.map((member, index) => {
+        if (
+            !member ||
+            typeof member !== "object" ||
+            typeof member.name !== "string" ||
+            !member.name.trim() ||
+            !Number.isFinite(member.id)
+        ) {
+            throw new Error(`team[${index}] is missing a valid id/name`);
+        }
+
+        const typeNames = Array.isArray(member.typeNames)
+            ? member.typeNames.filter(
+                  (t) => typeof t === "string" && VALID_TYPES.has(t)
+              )
+            : [];
+
+        return { id: member.id, name: member.name, typeNames };
+    });
+}
+
 // ─── Shared weakness computation ───────────────────────────────────────────────
 // Used by both /weaknesses (rendered in the sidebar) and /recommendation
 // (sent to the AI agent as grounding data) so the two never disagree and the
 // AI agent never has to re-derive type match-ups itself.
 //
-// team: [{ id, name, typeNames: string[] }]
+// team: [{ id, name, typeNames: string[] }] — expected to already be
+// sanitized via validateAndSanitizeTeam().
 // Returns: { pokemonWeaknesses: [{ id, name, weaknesses }], teamWeaknesses: [{ name, count }] }
 async function computeTeamWeaknesses(team) {
     if (!team || !team.length) {
@@ -93,8 +147,14 @@ async function computeTeamWeaknesses(team) {
 //     teamWeaknesses:    [{ name: string, count: number }]
 //   }
 router.post("/weaknesses", async (req, res) => {
+    let team;
     try {
-        const { team } = req.body;
+        team = validateAndSanitizeTeam(req.body?.team);
+    } catch (error) {
+        return res.status(400).json({ error: error.message || "Invalid team payload." });
+    }
+
+    try {
         const result = await computeTeamWeaknesses(team);
         res.json(result);
     } catch (error) {
@@ -111,11 +171,35 @@ router.post("/weaknesses", async (req, res) => {
 //
 // Request body: same shape as /weaknesses.
 // Response: { recommendation: string }
-router.post("/recommendation", async (req, res) => {
-    try {
-        const { team } = req.body;
+//
+// Rate-limited per client IP (see MIN_RECOMMENDATION_INTERVAL_MS below) as a
+// server-side backstop: the frontend already debounces 800ms between calls,
+// but that's a client-side courtesy a scripted caller could ignore. Without
+// this, an automated client hammering this endpoint could rack up Gemini
+// usage with no cost to itself.
+const MIN_RECOMMENDATION_INTERVAL_MS = 500;
+const lastRequestByIp = new Map();
 
-        if (!team || !team.length) {
+router.post("/recommendation", async (req, res) => {
+    const clientIp = req.ip;
+    const now = Date.now();
+    const lastRequestAt = lastRequestByIp.get(clientIp);
+    if (lastRequestAt && now - lastRequestAt < MIN_RECOMMENDATION_INTERVAL_MS) {
+        return res.status(429).json({
+            error: "Too many requests — please slow down.",
+        });
+    }
+    lastRequestByIp.set(clientIp, now);
+
+    let team;
+    try {
+        team = validateAndSanitizeTeam(req.body?.team);
+    } catch (error) {
+        return res.status(400).json({ error: error.message || "Invalid team payload." });
+    }
+
+    try {
+        if (!team.length) {
             return res.json({
                 recommendation: "Add Pokemon to your team to get AI advice.",
             });
